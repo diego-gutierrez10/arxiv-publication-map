@@ -209,12 +209,19 @@ function loadData() {
         // preview: 50000, 
         complete: function(results) {
             console.log(`CSV parsing complete. Processing ${results.data.length} rows.`);
+            
+            // Logsito
+            // DEBUG: Log the detected headers (meta.fields) and the first few rows of data
+            console.log("Detected headers (results.meta.fields):", results.meta ? results.meta.fields : "meta not available");
+            console.log("First 5 rows of parsed data (results.data.slice(0, 5)):", results.data.slice(0, 5));
+            console.log("All meta information from PapaParse:", results.meta);
+
             if (results.errors.length > 0) {
                 console.error("Errors during CSV parsing:", results.errors);
             }
             // Header validation
             if (!results.meta || !results.meta.fields || !results.meta.fields.includes('latitude') || !results.meta.fields.includes('longitude') || !results.meta.fields.includes('publication_year')) {
-                console.error('Error: CSV missing essential headers (latitude, longitude, publication_year).');
+                console.error('Error: CSV missing essential headers (latitude, longitude, publication_year). The headers found were: ' + (results.meta && results.meta.fields ? results.meta.fields.join(', ') : 'none or meta not available')); // Enhanced error message
                 hideLoadingIndicator();
                 return;
             }
