@@ -195,7 +195,7 @@ function extractDomains(data) {
 
 // --- Data Loading Function ---
 function loadData() {
-    const dataFilePath = 'data/arxiv_locations_geocoded.csv';
+    const dataFilePath = 'https://media.githubusercontent.com/media/diego-gutierrez10/arxiv-publication-map/main/data/arxiv_locations_geocoded.csv';
     console.log(`Attempting to load data from: ${dataFilePath}`);
     
     // Mostrar indicador de carga
