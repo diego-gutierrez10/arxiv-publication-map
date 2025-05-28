@@ -1,0 +1,267 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+}
+
+#header-container {
+    background-color: #f8f9fa; /* Light grey background */
+    padding: 15px 20px;
+    text-align: center;
+    border-bottom: 1px solid #dee2e6; /* Light border */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+#header-container h1 {
+    margin: 0 0 5px 0;
+    font-size: 1.8em;
+    color: #333;
+}
+
+#header-container p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #555;
+}
+
+#map {
+    width: 100%;
+    /* Adjust height to account for the header */
+    /* height: 100%; OLD, will be changed by calc */
+    height: calc(100% - 70px); /* Assuming header is approx 70px. Adjust if needed */
+    position: relative; /* Needed if other elements are absolutely positioned on it */
+}
+
+#controls-container {
+    position: absolute;
+    top: 85px; /* Adjusted to be below the new header, (e.g. 70px header + 15px margin) */
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.9); /* Slightly more opaque for better readability */
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    z-index: 1000; 
+    min-width: 200px; /* Increased min-width for better layout */
+    /* min-height: 50px; */ /* Can be removed if content dictates height */
+}
+
+.filter-group {
+    margin-bottom: 10px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+.filter-group select,
+.filter-group input[type="range"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; /* Ensures padding and border don't add to width */
+}
+
+/* Estilos mejorados para el control deslizante de años */
+#year-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 5px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+#year-slider:hover {
+    opacity: 1;
+}
+
+#year-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+#year-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+#year-display-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+}
+
+#play-pause-button {
+    padding: 8px 12px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#play-pause-button:hover {
+    background-color: #0056b3;
+}
+
+#year-display {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* Estilos mejorados para el selector de dominio */
+#domain-filter {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: white;
+    font-size: 14px;
+}
+
+#domain-filter:focus {
+    border-color: #4CAF50;
+    outline: none;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+/* Heatmap Legend Styles */
+.legend {
+    line-height: 1.8;
+    color: #555;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+.legend strong {
+    font-size: 1.1em;
+    display: block;
+    margin-bottom: 8px; /* Increased margin */
+    text-align: center;
+}
+
+.legend .legend-body {
+    display: flex;
+    align-items: flex-start; /* Align items to the start for vertical layout */
+}
+
+.legend .legend-gradient-bar {
+    width: 20px;
+    height: 150px; /* Height of the color bar */
+    border: 1px solid #ccc;
+    margin-right: 10px;
+}
+
+.legend .legend-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 150px; /* Match the bar height */
+    font-size: 0.8em;
+    padding-top: 2px; /* Minor adjustments for alignment */
+    padding-bottom: 2px;
+}
+
+.legend .legend-labels span {
+    display: block;
+    text-align: left;
+}
+
+/* OLD .legend i styles - will be removed effectively by new structure */
+.legend i {
+    /* width: 18px; */
+    /* height: 18px; */
+    /* float: left; */
+    /* margin-right: 8px; */
+    /* opacity: 0.9; */
+    /* border: 1px solid #aaa; */
+}
+
+/* Loading Indicator Styles */
+#loading-indicator {
+    position: fixed; /* Or absolute if positioned within a relative container */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+    z-index: 10000; /* Ensure it's on top of everything */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 1.5em;
+    text-align: center;
+}
+
+.spinner {
+    border: 8px solid #f3f3f3; /* Light grey */
+    border-top: 8px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px; /* Space between spinner and text */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loading-indicator p {
+    margin: 0; /* Reset paragraph margin */
+}
+
+/* Statistics Panel Styles */
+#statistics-panel {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd; /* Separator line */
+}
+
+#statistics-panel h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.stat-item {
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.stat-item .stat-label {
+    font-weight: bold;
+    color: #555;
+}
+
+#stats-top-cities {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 3px;
+}
+
+#stats-top-cities li {
+    padding-left: 10px;
+    font-size: 0.95em;
+} 
