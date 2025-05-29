@@ -14,7 +14,7 @@ let globalMinYear = null;
 let globalMaxYear = null;
 
 // Global variable for filtered data, used by popup/marker logic
-let filteredDataGlobal = []; // Stores currently filtered data
+let filteredDataGlobal = []; // Stores currently filtered data for popups and DBSCAN input
 
 // Animation state variables
 let isAnimating = false;
@@ -178,12 +178,9 @@ function addHeatmapLegend(mapInstance, heatmapOptions) {
     console.log("Vertical gradient heatmap legend added to map.");
 }
 
-// --- Data Processing Function ---
-// This function is no longer needed as data processing is handled by the backend
-// and initial filter population is handled by initializeApplicationStateAndLoadData
-/*
+// --- Data Processing Function (RESTAURADA Y MODIFICADA) ---
 function processLoadedData(parsedData) {
-    console.log("Processing loaded data...");
+    console.log("Processing loaded data from CSV...");
     const processedData = [];
     uniqueYears.clear();
     uniqueDomains.clear();
@@ -194,6 +191,7 @@ function processLoadedData(parsedData) {
         const year = parseInt(row.publication_year, 10);
 
         if (isNaN(lat) || isNaN(lon) || isNaN(year)) {
+            // console.warn("Skipping row with invalid lat, lon, or year:", row);
             return;
         }
         
@@ -209,8 +207,8 @@ function processLoadedData(parsedData) {
             country_code: row.country_code ? row.country_code.trim() : 'Unknown',
             city: row.city ? row.city.trim() : 'Unknown',
             title: row.title || 'No Title', 
-            arxiv_id: row.arxiv_id || null,
-            institution_name: row.institution_name ? row.institution_name.trim() : 'Unknown Institution'
+            arxiv_id: row.arxiv_id || null, // Asegúrate de que esta columna exista en tu CSV
+            institution_name: row.institution_name ? row.institution_name.trim() : 'Unknown Institution' // Asegúrate de que esta columna exista
         };
         
         processedData.push(record);
@@ -224,17 +222,17 @@ function processLoadedData(parsedData) {
     });
 
     allPublicationData = processedData;
-    console.log(`Processing complete. ${allPublicationData.length} valid records stored.`);
+    console.log(`CSV Processing complete. ${allPublicationData.length} valid records stored.`);
     
     const yearsArraySorted = Array.from(uniqueYears).sort((a, b) => a - b); 
     if (yearsArraySorted.length > 0) { 
         globalMinYear = yearsArraySorted[0]; 
         globalMaxYear = yearsArraySorted[yearsArraySorted.length - 1]; 
-        // Set default year to 2024 if available, otherwise to globalMaxYear
-        if (yearsArraySorted.includes(2024)) {
+        // Default selected year logic (puedes ajustar esto)
+        if (yearsArraySorted.includes(2024)) { // O el año que prefieras por defecto
             currentSelectedYear = 2024;
         } else {
-            currentSelectedYear = globalMaxYear; // Fallback to max year if 2024 not present
+            currentSelectedYear = globalMaxYear; 
         }
     } else { 
         globalMinYear = null; 
@@ -244,13 +242,10 @@ function processLoadedData(parsedData) {
     
     console.log("Determined Year Range: Min=", globalMinYear, "Max=", globalMaxYear, "Default Selected Year=", currentSelectedYear);
     
-    populateFilterControls(); // This will also set the slider to currentSelectedYear
-    
+    populateFilterControls(); 
     applyFilters(); // Initial data load and map update
-
-    setupMapClickPopup();
+    setupMapClickPopup(); // Configurar popups generales del mapa
 }
-*/
 
 // --- Function to Extract Unique Domains ---
 function extractDomains() {
@@ -258,43 +253,55 @@ function extractDomains() {
     return Array.from(uniqueDomains).sort();
 }
 
-// --- Data Loading Function ---
-// This function is replaced by initializeApplicationStateAndLoadData
-/*
+// --- Data Loading Function (RESTAURADA) ---
 function loadData() {
-    const dataFilePath = 'data/arxiv_locations_geocoded.csv';
+    const dataFilePath = 'https://media.githubusercontent.com/media/diego-gutierrez10/arxiv-publication-map/main/data/arxiv_locations_geocoded.csv';
     console.log(`Attempting to load data from: ${dataFilePath}`);
     
-    // Mostrar indicador de carga
     showLoadingIndicator();
 
     Papa.parse(dataFilePath, {
         download: true,
         header: true,
         skipEmptyLines: true,
-        // Eliminamos el límite de preview para cargar todos los datos disponibles
-        // preview: 50000, 
         complete: function(results) {
             console.log(`CSV parsing complete. Processing ${results.data.length} rows.`);
+            
+            // DEBUG Logs (mantener por ahora)
+            console.log("Detected headers (results.meta.fields):", results.meta ? results.meta.fields : "meta not available");
+            console.log("First 5 rows of parsed data (results.data.slice(0, 5)):", results.data.slice(0, 5));
+            console.log("All meta information from PapaParse:", results.meta);
+
             if (results.errors.length > 0) {
                 console.error("Errors during CSV parsing:", results.errors);
+                 // Mostrar un error al usuario podría ser bueno aquí también
             }
             // Header validation
-            if (!results.meta || !results.meta.fields || !results.meta.fields.includes('latitude') || !results.meta.fields.includes('longitude') || !results.meta.fields.includes('publication_year')) {
-                console.error('Error: CSV missing essential headers (latitude, longitude, publication_year).');
+            const expectedHeaders = ['latitude', 'longitude', 'publication_year', 'arxiv_categories', 'country_code', 'city', 'title', 'arxiv_id', 'institution_name'];
+            let missingHeaders = [];
+            if (results.meta && results.meta.fields) {
+                missingHeaders = expectedHeaders.filter(h => !results.meta.fields.includes(h));
+            } else {
+                missingHeaders = expectedHeaders; // Si no hay meta.fields, todas faltan
+            }
+
+            if (missingHeaders.length > 0) {
+                console.error('Error: CSV missing essential headers. Missing: ' + missingHeaders.join(', ') + 
+                              '. Headers found were: ' + (results.meta && results.meta.fields ? results.meta.fields.join(', ') : 'none or meta not available'));
+                alert('Error: Could not process the data file due to missing expected columns: ' + missingHeaders.join(', '));
                 hideLoadingIndicator();
                 return;
             }
             processLoadedData(results.data);
-            hideLoadingIndicator();
+            // hideLoadingIndicator(); // processLoadedData o applyFilters se encargarán
         },
         error: function(error, file) {
             console.error("Critical error loading or parsing CSV:", error, file);
+            alert("A critical error occurred while trying to load the data. Please check the console for details and try again.");
             hideLoadingIndicator();
         }
     });
 }
-*/
 
 // Funciones para mostrar/ocultar indicador de carga
 function showLoadingIndicator() {
@@ -451,6 +458,7 @@ function updateStatisticsPanel(filteredData) {
 // --- Constants for DBSCAN clustering ---
 const DBSCAN_MAX_DISTANCE_KM = 75; // Maximum distance in kilometers for points to be considered in the same cluster
 const DBSCAN_MIN_POINTS = 5;    // Minimum number of points to form a cluster
+const CLUSTER_BUFFER_KM = 75; // Buffer adicional para suavizar el área del cluster
 
 // Function to calculate the centroid of an array of points
 function calculateCentroid(points) {
@@ -478,82 +486,38 @@ function findMostFrequentCity(points) {
     return Object.entries(cityCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0];
 }
 
-// --- Apply Filters Function ---
-async function applyFilters() { // Made async to use await for fetch
-    console.log("Applying filters via backend...");
+// --- Apply Filters Function (MODIFICADA - SIN BACKEND FETCH) ---
+function applyFilters() { 
+    console.log("Applying filters (frontend)...");
     console.log(`Current filters - Year: ${currentSelectedYear}, Domain: ${currentSelectedDomain || "All"}`);
     
-    // showLoadingIndicator(); // No longer show indicator on every filter change
+    showLoadingIndicator(); 
+
+    let newlyFilteredData = allPublicationData; // Empezar con todos los datos cargados del CSV
     
-    // Ensure a year is selected; if not, default or prevent call.
-    // For now, we rely on currentSelectedYear being set by slider/initial load.
-    if (currentSelectedYear === null) {
-        console.warn("No year selected. Aborting applyFilters to backend.");
-        // Optionally clear map layers or show a message
-        heatLayer.setLatLngs([]);
-        hotspotMarkersLayer.clearLayers();
-        clusterAreaLayer.clearLayers();
-        updateStatisticsPanel([]); 
-        hideLoadingIndicator();
-        return;
+    if (currentSelectedYear !== null) {
+        newlyFilteredData = newlyFilteredData.filter(item => item.year === currentSelectedYear);
     }
-
-    let apiUrl = `http://localhost:3001/api/cluster?year=${currentSelectedYear}`; // New URL, points to backend server
-    if (currentSelectedDomain && currentSelectedDomain !== "all") {
-        apiUrl += `&domain=${encodeURIComponent(currentSelectedDomain)}`;
+    
+    if (currentSelectedDomain && currentSelectedDomain !== "") { // "" o "all" para "All Domains"
+        newlyFilteredData = newlyFilteredData.filter(item => 
+            item.categories && item.categories.includes(currentSelectedDomain)
+        );
     }
+    
+    console.log(`Total filtered data (frontend) contains ${newlyFilteredData.length} points.`);
+    filteredDataGlobal = newlyFilteredData; // Actualizar la variable global para popups
 
-    try {
-        console.log(`Fetching from backend: ${apiUrl}`);
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            console.error(`Error fetching cluster data from backend: ${response.status}`, errorData);
-            alert(`Failed to load hotspot data from server: ${errorData.message || response.statusText}`);
-            // Clear map on error
-            heatLayer.setLatLngs([]);
-            hotspotMarkersLayer.clearLayers();
-            clusterAreaLayer.clearLayers();
-            updateStatisticsPanel([]);
-            filteredDataGlobal = [];
-            hideLoadingIndicator();
-            return;
-        }
+    updateStatisticsPanel(filteredDataGlobal);
+    updateHeatmap(filteredDataGlobal); // Heatmap usa los datos filtrados directamente
 
-        const hotspotDataFromBackend = await response.json();
-        console.log(`Received ${hotspotDataFromBackend.length} hotspots from backend.`);
+    // ***** LÓGICA DE CLUSTERING DBSCAN Y ACTUALIZACIÓN DE MARCADORES NECESITA IR AQUÍ *****
+    // Esta es la parte que debemos asegurarnos de que esté presente y funcione con `filteredDataGlobal`
+    const hotspotData = clusterDataForHotspots(filteredDataGlobal); // Asumiendo que tienes esta función
+    updateHotspotMarkers(hotspotData); // Asumiendo que tienes esta función
 
-        // The backend now returns "hotspots" which are essentially pre-clustered groups.
-        // We need to extract all individual publications from these hotspots for the heatmap
-        // and for the generic map click popup.
-        
-        filteredDataGlobal = []; // Reset global filtered data
-        if (hotspotDataFromBackend.length > 0) {
-            hotspotDataFromBackend.forEach(hotspot => {
-                if (hotspot.publications && Array.isArray(hotspot.publications)) {
-                    filteredDataGlobal.push(...hotspot.publications);
-                }
-            });
-        }
-        console.log(`Total individual publications from hotspots for heatmap/stats: ${filteredDataGlobal.length}`);
-
-        updateHeatmap(filteredDataGlobal); // Heatmap uses all individual points from the returned clusters
-        updateHotspotMarkers(hotspotDataFromBackend); // Markers and polygons use the processed hotspot objects
-        updateStatisticsPanel(filteredDataGlobal); // Stats panel also uses individual points
-
-    } catch (error) {
-        console.error("Failed to fetch or process data from backend:", error);
-        alert("An error occurred while fetching data. Please try again.");
-        // Clear map on critical error
-        heatLayer.setLatLngs([]);
-        hotspotMarkersLayer.clearLayers();
-        clusterAreaLayer.clearLayers();
-        updateStatisticsPanel([]);
-        filteredDataGlobal = [];
-    } finally {
-        hideLoadingIndicator();
-    }
-    console.log("Application initialized.");
+    hideLoadingIndicator(); 
+    // console.log("Application re-initialized after frontend filtering."); // Ya no es una reinicialización completa
 }
 
 // --- Heatmap Update Function ---
@@ -858,77 +822,130 @@ function formatUnifiedPopupContent(points, areaName) {
     return content;
 }
 
-// --- Initial Load ---
+// --- Initial Load (MODIFICADA) ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM fully loaded and parsed.");
-    showLoadingIndicator();
-    initializeApplicationStateAndLoadData(); // Nueva función central
+    // Ya no se llama a initializeApplicationStateAndLoadData()
+    loadData(); // Llamar a la función de carga de CSV restaurada
 });
 
-async function initializeApplicationStateAndLoadData() {
-    console.log("Initializing application state and loading initial data...");
-    // 1. Set initial default filter values
-    globalMinYear = 2007; 
-    globalMaxYear = new Date().getFullYear(); 
-    
-    // Try to set to 2024, if not in range, use max year.
-    if (globalMaxYear >= 2024 && globalMinYear <= 2024) {
-        currentSelectedYear = 2024;
-    } else {
-        currentSelectedYear = globalMaxYear;
+// --- FUNCIONES DE CLUSTERING DBSCAN (REVISAR Y COMPLETAR/ADAPTAR) ---
+function clusterDataForHotspots(pointsToCluster) {
+    console.log(`Starting DBSCAN clustering for ${pointsToCluster.length} points.`);
+    if (!pointsToCluster || pointsToCluster.length === 0) {
+        console.log("No points to cluster.");
+        return [];
     }
-    
-    uniqueDomains.clear(); 
-    currentSelectedDomain = ""; 
-    
-    // 2. Populate filter controls with these initial defaults
-    populateFilterControls(); 
-    setupEventListeners(); 
 
-    // 3. Make the first call to applyFilters to get data from backend
-    await applyFilters(); 
+    // 1. Convertir tus puntos a formato GeoJSON FeatureCollection para Turf.js
+    const features = turf.featureCollection(
+        pointsToCluster.map((p, index) => turf.point([p.lon, p.lat], { ...p, id: `point-${index}` }))
+    );
 
-    // 4. After the first data load, update filter options based on actual data received
-    if (filteredDataGlobal.length > 0) {
-        console.log("Updating filter options based on first data load...");
-        const actualDomainsInternal = new Set(); // Use a local set for this scope
-
-        filteredDataGlobal.forEach(p => {
-            (p.categories || []).forEach(cat => {
-                if (cat && cat.trim() !== '') {
-                    actualDomainsInternal.add(cat);
-                }
-            });
+    // 2. Ejecutar DBSCAN
+    // const DBSCAN_MAX_DISTANCE_KM = 75; // Definido globalmente
+    // const DBSCAN_MIN_POINTS = 5;    // Definido globalmente
+    let clustered;
+    try {
+        clustered = turf.clustersDbscan(features, DBSCAN_MAX_DISTANCE_KM, { 
+            minPoints: DBSCAN_MIN_POINTS 
         });
-
-        // Update the global uniqueDomains set which is used by extractDomains -> populateDomainFilter
-        uniqueDomains.clear(); // Clear before adding new ones
-        actualDomainsInternal.forEach(domain => uniqueDomains.add(domain));
-        console.log(`Actual unique domains found: ${uniqueDomains.size}`);
-
-        // Repopulate controls with actual data ranges and options
-        populateDomainFilter();
-        // Ensure the year slider still reflects the currentSelectedYear, in case it was adjusted by logic above (though that logic is now commented out)
-        // Or, if currentSelectedYear might change for other reasons and needs to update the slider display:
-        const yearSlider = document.getElementById('year-slider');
-        const yearDisplay = document.getElementById('year-display');
-        if (yearSlider && yearDisplay && yearSlider.value !== String(currentSelectedYear)) {
-            yearSlider.value = currentSelectedYear;
-            yearDisplay.textContent = currentSelectedYear;
-        }
-
-        console.log("Domain filter repopulated with actual data. Year slider retains its broad range.");
-    } else {
-        console.log("No data returned from initial load, filter options remain as defaults.");
+        console.log(`DBSCAN found ${clustered.features.length} potential clusters/points.`);
+    } catch (e) {
+        console.error("Error during turf.clustersDbscan:", e);
+        return []; // Devuelve vacío si DBSCAN falla
     }
 
-    // 5. Setup map click popups
-    setupMapClickPopup();
+    const hotspots = [];
+    const uniqueClusterIds = new Set(clustered.features.map(f => f.properties.cluster));
+    
+    console.log("Unique cluster IDs from DBSCAN:", Array.from(uniqueClusterIds));
 
-    // 6. Hide loading indicator 
-    // (applyFilters also has a finally block, this ensures it's hidden if applyFilters had an early exit or error not caught by its own finally)
-    hideLoadingIndicator();
-    console.log("Application initialized.");
+
+    uniqueClusterIds.forEach(clusterId => {
+        if (clusterId === undefined) return; // Ignorar puntos no clusterizados (ruido)
+
+        const pointsInClusterGeoJson = clustered.features.filter(f => f.properties.cluster === clusterId);
+        
+        // Convertir de nuevo a tu formato de datos si es necesario, o usar properties directamente
+        const originalPublicationsInCluster = pointsInClusterGeoJson.map(f => f.properties); 
+
+        if (originalPublicationsInCluster.length > 0) {
+            const numPublications = originalPublicationsInCluster.length;
+            
+            let clusterShape;
+            let basePolygon; // Para el buffer de 75km
+
+            if (numPublications >= 3) {
+                try {
+                    // Crear una FeatureCollection solo con los puntos de este cluster para el convex hull
+                    const clusterPointFeatures = turf.featureCollection(
+                        originalPublicationsInCluster.map(p => turf.point([p.lon, p.lat]))
+                    );
+                    basePolygon = turf.convex(clusterPointFeatures);
+                    if (!basePolygon) {
+                         console.warn(`Convex hull returned null for cluster ${clusterId} with ${numPublications} points. Falling back to centroid buffer.`);
+                         const centroid = turf.centroid(clusterPointFeatures);
+                         basePolygon = turf.buffer(centroid, 1, { units: 'kilometers' }); // Pequeño buffer como fallback
+                    }
+                } catch (e) {
+                    console.error(`Error calculating convex hull for cluster ${clusterId}:`, e);
+                    const centroidFeature = turf.centroid(turf.featureCollection(originalPublicationsInCluster.map(p => turf.point([p.lon, p.lat]))));
+                    basePolygon = turf.buffer(centroidFeature, 1, { units: 'kilometers' }); // Fallback más robusto
+                }
+            } else { // Menos de 3 puntos, usar un buffer alrededor del centroide como base
+                const featurePoints = originalPublicationsInCluster.map(p => turf.point([p.lon, p.lat]));
+                if (featurePoints.length === 1) {
+                    basePolygon = turf.buffer(featurePoints[0], 1, { units: 'kilometers' }); // Buffer de 1km para un solo punto
+                } else if (featurePoints.length === 2) {
+                    // Para dos puntos, podrías hacer una línea y bufferizarla, o bufferizar cada punto y unirlos, o un buffer al centroide
+                    const centroidFeature = turf.centroid(turf.featureCollection(featurePoints));
+                    basePolygon = turf.buffer(centroidFeature, 5, { units: 'kilometers' }); // Buffer un poco más grande
+                } else {
+                    // No debería llegar aquí si numPublications > 0, pero por si acaso
+                     console.warn(`Cluster ${clusterId} has ${numPublications} points, but no basePolygon generated. Skipping buffering.`);
+                     basePolygon = null; // No hay polígono base
+                }
+            }
+            
+            if (basePolygon) {
+                try {
+                    clusterShape = turf.buffer(basePolygon, CLUSTER_BUFFER_KM, { units: 'kilometers' });
+                } catch (e) {
+                    console.error(`Error buffering basePolygon for cluster ${clusterId}:`, e);
+                    clusterShape = basePolygon; // Usar el polígono base si el buffer falla
+                }
+            } else {
+                console.warn(`No valid base polygon to buffer for cluster id ${clusterId} with ${numPublications} points.`);
+                // Intentar crear un "clusterShape" a partir de un centroide general si todo lo demás falla
+                const centroidCoords = calculateCentroid(originalPublicationsInCluster); // Tu función de centroide
+                if (centroidCoords) {
+                    try {
+                        clusterShape = turf.buffer(turf.point([centroidCoords.lon, centroidCoords.lat]), CLUSTER_BUFFER_KM, {units: 'kilometers'});
+                    } catch (e) {
+                         console.error("Error buffering fallback centroid for cluster shape:", e);
+                         clusterShape = null;
+                    }
+                } else {
+                    clusterShape = null;
+                }
+            }
+            
+            const centroidOfCluster = calculateCentroid(originalPublicationsInCluster); // Tu función
+            const representativeCity = findMostFrequentCity(originalPublicationsInCluster); // Tu función
+
+            hotspots.push({
+                id: `cluster-${clusterId}`,
+                publicationCount: numPublications,
+                centroid: centroidOfCluster ? [centroidOfCluster.lon, centroidOfCluster.lat] : null,
+                city: representativeCity, // Podrías querer una lógica más sofisticada aquí
+                clusterPolygon: clusterShape,
+                publications: originalPublicationsInCluster // Guardar las publicaciones originales para los popups
+            });
+        }
+    });
+    console.log(`DBSCAN processing finished. Generated ${hotspots.length} hotspots.`);
+    return hotspots;
 }
 
 // --- Animation Functions ---
@@ -994,40 +1011,6 @@ async function advanceYearAndFilter() {
     // showLoadingIndicator(); // No longer show indicator during animation year change
     await applyFilters();
     // hideLoadingIndicator(); // applyFilters already has a finally block to hide it
-}
-
-// Adjusting when setupMapClickPopup is called.
-// It should be after the map is initialized AND data is loaded/filtered initially so filteredDataGlobal is populated.
-// Modifying processLoadedData to call it.
-
-function initializeMap() {
-    // Initialize the map
-    map = L.map('map-container').setView([20, 0], 2); // Centered globally, adjust as needed
-
-    // Add OpenStreetMap tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        minZoom: 2,
-        maxZoom: 18
-    }).addTo(map);
-
-    // Add zoom and scale controls
-    L.control.zoom({ position: 'topright' }).addTo(map);
-    L.control.scale({ position: 'bottomleft' }).addTo(map);
-    
-    console.log("Leaflet map initialized with zoom and scale controls.");
-
-    // --- Initialize Heatmap Layer ---
-    // const heatLayer = L.heatLayer([], getHeatmapOptions()).addTo(map);
-    // console.log("Leaflet.heat layer initialized with dynamic options.");
-    // The heatLayer is initialized globally and added to the map later or when data is ready.
-    // For now, we ensure it's globally accessible if needed before data loading.
-    // window.heatLayer = L.heatLayer([], getHeatmapOptions()); 
-    // window.heatLayer.addTo(map);
-    // console.log("Global heatLayer initialized and added to map.");
-
-    // Add the legend to the map
-    // addHeatmapLegend(map, getHeatmapOptions()); // This call is being moved to the global scope after heatLayer initialization
 }
 
 // --- Function to update hotspot markers on the map (Opción 3) ---
