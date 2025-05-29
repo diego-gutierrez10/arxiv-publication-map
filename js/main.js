@@ -513,6 +513,8 @@ function applyFilters() {
 
     // ***** LÓGICA DE CLUSTERING DBSCAN Y ACTUALIZACIÓN DE MARCADORES NECESITA IR AQUÍ *****
     // Esta es la parte que debemos asegurarnos de que esté presente y funcione con `filteredDataGlobal`
+    console.log("[applyFilters] Data being sent to clusterDataForHotspots (first 5 items):", JSON.parse(JSON.stringify(filteredDataGlobal.slice(0, 5))));
+    console.log(`[applyFilters] Total items for clustering: ${filteredDataGlobal.length}`);
     const hotspotData = clusterDataForHotspots(filteredDataGlobal); // Asumiendo que tienes esta función
     updateHotspotMarkers(hotspotData); // Asumiendo que tienes esta función
 
@@ -831,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- FUNCIONES DE CLUSTERING DBSCAN (REVISAR Y COMPLETAR/ADAPTAR) ---
 function clusterDataForHotspots(pointsToCluster) {
-    console.log(`Starting DBSCAN clustering for ${pointsToCluster.length} points.`);
+    console.log(`[clusterDataForHotspots] Starting DBSCAN clustering for ${pointsToCluster.length} points.`); // Log inicial
     if (!pointsToCluster || pointsToCluster.length === 0) {
         console.log("No points to cluster.");
         return [];
@@ -850,7 +852,10 @@ function clusterDataForHotspots(pointsToCluster) {
         clustered = turf.clustersDbscan(features, DBSCAN_MAX_DISTANCE_KM, { 
             minPoints: DBSCAN_MIN_POINTS 
         });
-        console.log(`DBSCAN found ${clustered.features.length} potential clusters/points.`);
+        console.log(`[clusterDataForHotspots] DBSCAN output (clustered features count): ${clustered.features.length}`);
+        if (clustered.features.length > 0) {
+            console.log("[clusterDataForHotspots] First clustered feature properties:", clustered.features[0].properties);
+        }
     } catch (e) {
         console.error("Error during turf.clustersDbscan:", e);
         return []; // Devuelve vacío si DBSCAN falla
@@ -859,7 +864,7 @@ function clusterDataForHotspots(pointsToCluster) {
     const hotspots = [];
     const uniqueClusterIds = new Set(clustered.features.map(f => f.properties.cluster));
     
-    console.log("Unique cluster IDs from DBSCAN:", Array.from(uniqueClusterIds));
+    console.log("[clusterDataForHotspots] Unique cluster IDs from DBSCAN:", Array.from(uniqueClusterIds));
 
 
     uniqueClusterIds.forEach(clusterId => {
@@ -933,6 +938,7 @@ function clusterDataForHotspots(pointsToCluster) {
             
             const centroidOfCluster = calculateCentroid(originalPublicationsInCluster); // Tu función
             const representativeCity = findMostFrequentCity(originalPublicationsInCluster); // Tu función
+            console.log(`[clusterDataForHotspots] Processing clusterId: ${clusterId}, numPubs: ${numPublications}, basePolygon: ${basePolygon ? 'Exists' : 'Null'}, clusterShape: ${clusterShape ? 'Exists' : 'Null'}`);
 
             hotspots.push({
                 id: `cluster-${clusterId}`,
@@ -944,7 +950,10 @@ function clusterDataForHotspots(pointsToCluster) {
             });
         }
     });
-    console.log(`DBSCAN processing finished. Generated ${hotspots.length} hotspots.`);
+    console.log(`[clusterDataForHotspots] DBSCAN processing finished. Generated ${hotspots.length} hotspots.`);
+    if (hotspots.length > 0) {
+        console.log("[clusterDataForHotspots] First generated hotspot sample:", JSON.parse(JSON.stringify(hotspots[0])));
+    }
     return hotspots;
 }
 
@@ -1015,7 +1024,7 @@ async function advanceYearAndFilter() {
 
 // --- Function to update hotspot markers on the map (Opción 3) ---
 function updateHotspotMarkers(hotspotData) {
-    console.log(`Updating hotspot markers and areas with ${hotspotData.length} hotspots...`);
+    console.log(`[updateHotspotMarkers] Updating hotspot markers and areas with ${hotspotData ? hotspotData.length : 'N/A'} hotspots...`); // Log inicial
     hotspotMarkersLayer.clearLayers();
     clusterAreaLayer.clearLayers(); // Clear the polygon layer as well
 
@@ -1047,6 +1056,7 @@ function updateHotspotMarkers(hotspotData) {
 
         marker.bindPopup(popupContent);
         marker.addTo(hotspotMarkersLayer);
+        console.log(`[updateHotspotMarkers] Added marker for hotspot: ${hotspot.id || 'N/A'} at ${markerLatLng.toString()}`);
 
         if (hotspot.clusterPolygon && hotspot.clusterPolygon.geometry) {
             const polygonStyle = {
@@ -1059,9 +1069,10 @@ function updateHotspotMarkers(hotspotData) {
             L.geoJSON(hotspot.clusterPolygon, { style: polygonStyle })
              .bindPopup(popupContent) 
              .addTo(clusterAreaLayer);
+            console.log(`[updateHotspotMarkers] Added polygon for hotspot: ${hotspot.id || 'N/A'}`);
         } else {
-            console.warn(`Skipping polygon for hotspot id ${hotspot.id} because clusterPolygon is missing or invalid.`);
+            console.warn(`[updateHotspotMarkers] Skipping polygon for hotspot id ${hotspot.id || 'N/A'} because clusterPolygon is missing or invalid.`);
         }
     });
-    console.log(`${hotspotData.length} hotspot markers and areas updated/added.`);
+    console.log(`[updateHotspotMarkers] ${hotspotData ? hotspotData.length : '0'} hotspot markers and areas updated/added.`);
 } 
