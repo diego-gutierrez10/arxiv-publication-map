@@ -1,5 +1,9 @@
 # Scientific Publication Heatmap Visualization Tool
 
+**Author:** Diego Alejandro Gutiérrez-Rios  
+**Institution:** Facultad de Ciencias - Universidad Autónoma de Baja California  
+**Contact:** diego.gutierrez10@uabc.edu.mx
+
 An interactive web application that visualizes the global geographic distribution of scientific publications from ArXiv using dynamic heatmaps and advanced clustering algorithms.
 
 ## Overview
@@ -192,4 +196,8 @@ To extend or modify the tool:
 
 ## License
 
-This project is developed for research and educational purposes. Please cite appropriately when using for academic work. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+This project is developed for research and educational purposes. Please cite appropriately when using for academic work.
+
+**Note:** The complete research paper with detailed methodology and findings will be published soon. Stay tuned for the full academic publication. 
