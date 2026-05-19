@@ -1,0 +1,48 @@
+# ─── macOS ───
+.DS_Store
+
+# ─── Python ───
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# ─── Editors ───
+.vscode/
+.idea/
+
+# ─── Logs ───
+*.log
+
+# ─── Datos fuente / intermedios (no caben en GitHub o son demasiado pesados) ───
+# CSV fuente — 333 MB, vive solo local
+data/arxiv_locations_geocoded.csv
+# Cache de abstracts del Kaggle dump — 170 MB, intermedio reproducible
+data/abstracts_cache.json
+# embeddings.bin antiguo del MiniLM — ya no se usa (backend hace la búsqueda)
+data/embeddings.bin
+# Intermedios del pipeline mxbai (ya están en backend/data/, no se versionan)
+data/embeddings_mxbai.bin
+data/embeddings_*.bin
+
+# ─── Backend data (vive en HF Spaces; en GitHub solo va el código) ───
+backend/data/*.bin
+backend/data/*.json
+# Pero permitir un placeholder mínimo si llegamos a meterlo
+!backend/data/.gitkeep
+
+# ─── Backups locales ───
+*.full.json
+*.legacy
+recovered_js/
+
+# ─── Test files temporales ───
+archivito.py
+/nano
+
+# ─── Caches HF / torch ───
+.cache/
+backend/.cache/

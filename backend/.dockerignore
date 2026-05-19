@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+.env
+.DS_Store
+.git
+.gitignore
+.cache
+
+# Backups locales del JSON con campos extras — nunca se suben al Space
+data/*.full.json

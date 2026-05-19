@@ -1,0 +1,6 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+numpy>=1.24
+sentence-transformers>=3.0
+# torch lo trae sentence-transformers; en HF Spaces CPU el wheel es ~300 MB
