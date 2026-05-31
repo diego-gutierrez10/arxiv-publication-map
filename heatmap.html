@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-direction="observatory" data-mode="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArXiv Publication Density — Semantic Search</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/scientific.css" />
+</head>
+<body>
+
+  <!-- Loading splash -->
+  <div id="loading">
+    <div class="pulse"></div>
+    <div class="msg">Loading dataset…</div>
+  </div>
+
+  <!-- Map canvas -->
+  <div id="map"></div>
+  <div id="grid-overlay"></div>
+
+  <!-- Brand (top-left) -->
+  <div id="brand" class="panel" data-screen-label="Brand">
+    <div class="eyebrow"><span class="dot"></span><span>FIG. 1 · INTERACTIVE · v2026.05</span></div>
+    <h1>Geographic distribution of ArXiv preprints by host institution with semantic search</h1>
+    <div class="sub">Kernel density estimation over corresponding-author affiliations geocoded to WGS-84 coordinates. Semantic meta-search ranks DBSCAN hotspots by cumulative cosine similarity between the query embedding and abstract embeddings (<code>mxbai-embed-large-v1</code>, <span class="num">d = 1024</span>), inferred by a FastAPI service on Hugging Face Spaces.</div>
+
+    <div class="params">
+      <span class="k">DBSCAN</span><span class="v"><code>ε = 0.7°</code> · <code>minPts ≥ 2</code></span>
+      <span class="k">Embeddings</span><span class="v"><code>mxbai-embed-large-v1</code> · 1024-d</span>
+      <span class="k">Inference</span><span class="v">FastAPI + sentence-transformers</span>
+      <span class="k">Source</span><span class="v">arXiv API + Nominatim</span>
+    </div>
+
+    <button id="methods-toggle" class="methods-toggle" aria-expanded="false">
+      <span>Methods · Data</span><span class="chev">▾</span>
+    </button>
+    <div id="methods-body" class="methods-body">
+      <div class="row"><span class="k">Projection</span><span class="v">Web Mercator (EPSG:3857)</span></div>
+      <div class="row"><span class="k">Coordinates</span><span class="v">WGS-84 lat / lon</span></div>
+      <div class="row"><span class="k">Clustering</span><span class="v">DBSCAN, ε = 0.7°</span></div>
+      <div class="row"><span class="k">Density</span><span class="v">Leaflet.heat (KDE)</span></div>
+      <div class="row"><span class="k">Embedder</span><span class="v">mixedbread-ai/mxbai-embed-large-v1</span></div>
+      <div class="row"><span class="k">Similarity</span><span class="v">Cosine, normalized</span></div>
+      <div class="row"><span class="k">Aggregation</span><span class="v">Sum of top-K per cluster</span></div>
+      <div class="row"><span class="k">Inference</span><span class="v">FastAPI / Hugging Face Spaces (CPU)</span></div>
+      <div class="row"><span class="k">Geocoding</span><span class="v">Affiliation → Nominatim</span></div>
+      <div class="row"><span class="k">License</span><span class="v">MIT · data CC-BY 4.0</span></div>
+    </div>
+
+    <div class="citation">
+      <span class="name">Gutiérrez-Rios, D. A.</span> (2026). Metabuscador de investigaciones científicas con correspondencia geoespacial. Universidad Autónoma de Baja California, Facultad de Ciencias. ⟨diego.gutierrez10@uabc.edu.mx⟩
+    </div>
+  </div>
+
+  <!-- Coordinate readout (centered, beneath search) -->
+  <div id="coord-readout">
+    <span><span class="k">lat</span><span class="v" data-k="lat">—</span></span>
+    <span><span class="k">lon</span><span class="v" data-k="lon">—</span></span>
+    <span><span class="v" data-k="zoom">z=2.5</span></span>
+  </div>
+
+  <!-- Search (top-center) -->
+  <div id="search-panel" class="panel" data-screen-label="Search">
+    <div class="search-row">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="7" cy="7" r="5"/>
+        <path d="m11 11 3 3"/>
+      </svg>
+      <input id="search-input" type="text" placeholder="Search abstracts semantically — e.g. owl vocalization endemic North America" autocomplete="off" spellcheck="false" disabled />
+      <span class="search-hint" id="search-hint">…</span>
+    </div>
+    <div id="search-results" class="search-results"></div>
+  </div>
+
+  <!-- Sidebar: filters + stats -->
+  <div id="sidebar">
+    <div class="card" data-screen-label="Stats">
+      <h3>
+        <span>Selection summary</span>
+        <span id="stats-unit-tag" class="count" style="display:none"></span>
+      </h3>
+      <div class="stat-bigrow">
+        <span class="big" id="stats-total">0</span>
+        <span class="unit" id="stats-unit">papers (n)</span>
+      </div>
+      <div class="stats-tabs" id="stats-tabs">
+        <button class="stats-tab active" data-tab="country">Countries</button>
+        <button class="stats-tab" data-tab="city">Cities</button>
+        <button class="stats-tab" data-tab="institution">Institutions</button>
+      </div>
+      <ul class="top-list" id="stats-list"></ul>
+    </div>
+
+    <div class="card" data-screen-label="Domains">
+      <h3>
+        <span>Research domain</span>
+        <span class="count" id="domain-count">All</span>
+      </h3>
+      <div class="domain-list" id="domain-list"></div>
+    </div>
+  </div>
+
+  <!-- Timeline (bottom-center) -->
+  <div id="timeline" class="panel" data-screen-label="Timeline">
+    <div class="timeline-head">
+      <div>
+        <div class="label">Time period
+          <span class="range-mode">
+            <button data-mode="range" class="active">Range</button>
+            <button data-mode="single">Single year</button>
+          </span>
+        </div>
+      </div>
+      <div class="timeline-controls">
+        <button id="play-btn" class="play-btn" aria-label="Play animation">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2 L13 8 L3 14 Z"/></svg>
+        </button>
+        <span class="year-now" id="year-now">2024</span>
+      </div>
+    </div>
+    <div class="timeline-track">
+      <div class="timeline-bars" id="year-bars"></div>
+      <div class="timeline-slider" id="range-slider">
+        <input type="range" id="year-min" />
+        <input type="range" id="year-max" />
+      </div>
+      <div class="timeline-slider" id="single-slider" style="display:none">
+        <input type="range" id="year-single" />
+      </div>
+      <div class="timeline-axis">
+        <span id="year-axis-l">2018</span>
+        <span id="year-axis-r">2025</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Density legend (bottom-left) -->
+  <div id="legend" class="panel" data-screen-label="Legend">
+    <div class="label"><span>Publication density</span><span style="font-family:var(--font-mono);font-size:9px;color:var(--fg-dim)">log scale</span></div>
+    <div class="gradient-bar"></div>
+    <div class="gradient-axis"><span>Low</span><span>Med</span><span>High</span></div>
+  </div>
+
+  <!-- Display parameters toggle (bottom-right) -->
+  <button id="tweaks-toggle" class="panel" aria-label="Toggle display parameters">
+    <span class="dot"></span>
+    <span>Parameters</span>
+  </button>
+
+  <aside id="tweaks-panel" class="panel">
+    <div class="tweaks-head">
+      <span class="t">Display parameters</span>
+      <button id="tweaks-close" aria-label="Close">×</button>
+    </div>
+
+    <div class="tweak">
+      <div class="lbl">Heatmap palette</div>
+      <div class="ramp-row">
+        <button class="ramp-chip" data-ramp="magma"   title="Magma"></button>
+        <button class="ramp-chip" data-ramp="inferno" title="Inferno"></button>
+        <button class="ramp-chip" data-ramp="viridis" title="Viridis"></button>
+        <button class="ramp-chip" data-ramp="hot"     title="Hot"></button>
+        <button class="ramp-chip" data-ramp="blues"   title="Sequential blue"></button>
+        <button class="ramp-chip" data-ramp="rdbu"    title="Original (blue → red)"></button>
+      </div>
+    </div>
+
+    <div class="tweak">
+      <div class="lbl">Density radius <span class="v"><span id="tweak-radius-v">28</span>px</span></div>
+      <input type="range" id="tweak-radius" min="8" max="60" step="1" value="28" />
+    </div>
+
+    <div class="tweak">
+      <div class="lbl">Density blur <span class="v"><span id="tweak-blur-v">22</span>px</span></div>
+      <input type="range" id="tweak-blur" min="0" max="40" step="1" value="22" />
+    </div>
+
+    <div class="tweak">
+      <div class="lbl">Base map</div>
+      <div class="opt-row">
+        <button class="opt-chip" data-tweak="tiles" data-value="auto">Auto</button>
+        <button class="opt-chip" data-tweak="tiles" data-value="dark-matter">Dark</button>
+        <button class="opt-chip" data-tweak="tiles" data-value="positron">Light</button>
+      </div>
+      <div class="opt-row" style="margin-top:6px">
+        <button class="opt-chip" data-tweak="tiles" data-value="voyager">Voyager</button>
+        <button class="opt-chip" data-tweak="tiles" data-value="toner">Toner B&amp;W</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Libraries -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <!-- Backend de inferencia (FastAPI en Hugging Face Spaces). -->
+  <script>
+    // Dev local: http://localhost:7860  ·  Prod: HF Space del usuario diegoagutierrez10
+    window.PUBSEARCH_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:7860'
+      : 'https://diegoagutierrez10-arxiv-publication-map-api.hf.space';
+  </script>
+
+  <!-- App scripts (?v=3 cache-bust por migración a backend FastAPI + corrección de URL HF) -->
+  <script src="js/search.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
+  <script src="js/scientific-extras.js?v=3"></script>
+</body>
+</html>
